@@ -15,7 +15,12 @@ install:
 test:
 	./mvnw test
 	
-deploy:
+deploy: docker-volume-create docker-remove docker-build
+	@echo
+	@echo Done
+	@echo
+
+run:
 
 package:
 	./mvnw package spring-boot:repackage
@@ -25,15 +30,29 @@ docker-build: package
 	docker build --file=docker/Dockerfile --tag=webschop:latest --rm=true docker/
 
 docker-run:
-	@echo $(mkfile_dir)
-	docker run --name=webschop --publish=8080:8080 \
-		--volume=$(mkfile_dir)application-docker.properties:/opt/webschop/application.properties \
-		--volume=$(mkfile_dir)docker/permanent:/permanent/external/ \
-		--volume=$(mkfile_dir)docker/temp/webschop/search:/tmp/webschop/search/ \
+	docker run -d --name=webschop --publish=8080:8080 \
+		--volume=$(mkfile_dir)docker/application-docker.properties:/opt/webschop/application.properties \
+		--volume=webschop-permanent-storage:/permanent/external/ \
+		--volume=webschop-lucene-cache:/tmp/webschop/search/ \
+		--network="host" \
 		webschop:latest
 
-docker-remove:
-	docker rm webschop
+docker-run-test:
+	docker run --name=webschop --publish=8080:8080 \
+		--volume=$(mkfile_dir)docker/application-docker.properties:/opt/webschop/application.properties \
+		--volume=$(mkfile_dir)test/external:/permanent/external/ \
+		--volume=$(mkfile_dir)docker/temp/webschop/search:/tmp/webschop/search/ \
+		--network="host" \
+		webschop:latest
 
-run:
+docker-stop:
+	docker stop webschop
+
+docker-remove:
+	docker rm webschop || true
+
+docker-volume-create:
+	docker volume create --name webschop-permanent-storage
+	docker volume create --name webschop-lucene-cache
+
 	
